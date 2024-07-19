@@ -195,66 +195,89 @@
         }
 
         function fetchAndDisplayData() {
-    fetch('gestion.php')
-    .then(response => response.text())
-    .then(data => {
-        const tbody = document.getElementById('abonnementsBody');
-        tbody.innerHTML = '';
+            fetch('gestion.php')
+            .then(response => response.text())
+            .then(data => {
+                const tbody = document.getElementById('abonnementsBody');
+                
+                // Nettoyer le contenu actuel du tbody
+                tbody.innerHTML = '';
 
-        if (data.trim() !== '') {
-            const rows = data.trim().split("\n");
-            rows.forEach(row => {
-                const columns = row.split(",");
-                const tr = document.createElement('tr');
+                if (data.trim() !== '') {
+                    const rows = data.trim().split("\n");
+                    rows.forEach(row => {
+                        const columns = row.split(",");
+                        const tr = document.createElement('tr');
 
-                // Calcul de la date de fin d'abonnement
-                const subscriptionDate = new Date(columns[6]);
-                let expirationDate = new Date(subscriptionDate);
-                const duration = parseInt(columns[4]);
-                expirationDate.setMonth(expirationDate.getMonth() + duration);
+                        // Calcul de la date de fin d'abonnement
+                        const subscriptionDate = new Date(columns[6]);
+                        let expirationDate = new Date(subscriptionDate);
+                        const duration = parseInt(columns[4]);
+                        expirationDate.setMonth(expirationDate.getMonth() + duration);
 
-                // Formater la date d'abonnement et la date de fin d'abonnement
-                const formattedStartDate = formatDate(subscriptionDate);
-                const formattedEndDate = formatDate(expirationDate);
+                        // Formater la date d'abonnement et la date de fin d'abonnement
+                        const formattedStartDate = formatDate(subscriptionDate);
+                        const formattedEndDate = formatDate(expirationDate);
 
-                tr.innerHTML = `
-                    <td><img src="data:image/jpeg;base64,${columns[8]}" alt="" class="profile-photo" onclick="showPhoto('data:image/jpeg;base64,${columns[8]}')"></td>
-                    <td>${columns[0]}</td>
-                    <td>${columns[1]}</td>
-                    <td>${columns[2]}</td>
-                    <td>${columns[3]}</td>
-                    <td>${columns[4]}</td>
-                    <td>${columns[5]}</td>
-                    <td>${formattedStartDate}</td>
-                    <td>${formattedEndDate}</td>
-                    <td>
-                        <button class="payment-button" id="paymentButton_${columns[7]}" data-subscription-date="${columns[6]}" data-subscription-duration="${columns[4]}">Payé</button>
-                    </td>
-                  <td>
+                        tr.innerHTML = `
+                            <td><img src="data:image/jpeg;base64,${columns[8]}" alt="" class="profile-photo" onclick="showPhoto('data:image/jpeg;base64,${columns[8]}')"></td>
+                            <td>${columns[0]}</td>
+                            <td>${columns[1]}</td>
+                            <td>${columns[2]}</td>
+                            <td>${columns[3]}</td>
+                            <td>${columns[4]}</td>
+                            <td>${columns[5]}</td>
+                            <td>${formattedStartDate}</td>
+                            <td>${formattedEndDate}</td>
+                            <td>
+                                <button class="payment-button" id="paymentButton_${columns[7]}" data-subscription-date="${columns[6]}" data-subscription-duration="${columns[4]}">Payé</button>
+                            </td>
+                              <td>
                                 <button class="edit-button" onclick="editRow(${columns[7]}, '${columns[0]}', '${columns[1]}', '${columns[2]}', '${columns[3]}', '${columns[4]}', '${columns[5]}', '${columns[6]}', '${columns[8]}')">Modifier</button>
                                 <button onclick="deleteRow(${columns[7]})">Supprimer</button>
                             </td>
-                `;
-                tbody.appendChild(tr);
-            });
-            setupPaymentButtons();
-        } else {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="11">Aucune donnée disponible</td>`;
-            tbody.appendChild(tr);
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    setupPaymentButtons();
+                } else {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td colspan="11">Aucune donnée disponible</td>`;
+                    tbody.appendChild(tr);
+                }
+            })
+            .catch(error => console.error('Erreur:', error));
         }
-    })
-    .catch(error => console.error('Erreur:', error));
-}
 
-function formatDate(date) {
-    const options = { day: 'numeric', month: 'long', year: 'numeric' };
-    return new Intl.DateTimeFormat('fr-FR', options).format(date);
-}
+        function formatDate(date) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return date.toLocaleDateString('fr-FR', options);
+        }
 
+        function setupPaymentButtons() {
+            const paymentButtons = document.querySelectorAll('.payment-button');
+            paymentButtons.forEach(button => {
+                const subscriptionDate = new Date(button.dataset.subscriptionDate);
+                const subscriptionDuration = parseInt(button.dataset.subscriptionDuration);
+                const expirationDate = new Date(subscriptionDate);
+                expirationDate.setMonth(expirationDate.getMonth() + subscriptionDuration);
 
+                const currentDate = new Date();
+                if (currentDate > expirationDate) {
+                    button.classList.add('expired');
+                    button.textContent = 'Expiré';
+                    button.disabled = true;
+                } else {
+                    button.classList.remove('expired');
+                    button.textContent = 'Payé';
+                    button.disabled = false;
+                }
+            });
+        }
 
-document.getElementById('editForm').addEventListener('submit', function(event) {
+   
+
+        document.getElementById('editForm').addEventListener('submit', function(event) {
             event.preventDefault();
             const formData = new FormData(this);
 
@@ -284,127 +307,6 @@ document.getElementById('editForm').addEventListener('submit', function(event) {
             document.getElementById('currentPhoto').src = `data:image/jpeg;base64,${photo}`;
             document.getElementById('editFormContainer').style.display = 'block';
         }
-
-function hideEditForm() {
-    document.getElementById('editFormContainer').style.display = 'none';
-}
-
-        function showPhoto(photoSrc) {
-    const img = document.createElement('img');
-    img.src = photoSrc;
-    img.style.width = '300px'; // Ajuste la taille selon tes besoins
-    img.style.borderRadius = '15px';
-    img.style.border = '2px solid #0858a1';
-
-    // Crée une fenêtre modale pour afficher l'image
-    const modal = document.createElement('div');
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100%';
-    modal.style.height = '100%';
-    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    modal.style.display = 'flex';
-    modal.style.alignItems = 'center';
-    modal.style.justifyContent = 'center';
-    modal.onclick = () => document.body.removeChild(modal);
-
-    modal.appendChild(img);
-    document.body.appendChild(modal);
-}
-        function calculateExpirationDate(startDate, duration) {
-            const subscriptionDate = new Date(startDate);
-            let expirationDate = new Date(subscriptionDate);
-            switch (duration) {
-                case '1mois':
-                    expirationDate.setMonth(expirationDate.getMonth() + 1);
-                    break;
-                case '3mois':
-                    expirationDate.setMonth(expirationDate.getMonth() + 3);
-                    break;
-                case '6mois':
-                    expirationDate.setMonth(expirationDate.getMonth() + 6);
-                    break;
-                case '12mois':
-                    expirationDate.setMonth(expirationDate.getMonth() + 12);
-                    break;
-                default:
-                    // Si l'utilisateur a choisi une durée personnalisée (autre), ajustez en conséquence
-                    // Par exemple, pour une durée personnalisée, le calcul pourrait être différent.
-                    break;
-            }
-            return expirationDate.toISOString().split('T')[0];
-        }
-
-        function updatePrice() {
-            const abonnement = document.getElementById('editAbonnement').value;
-            let price = 0;
-
-            switch (abonnement) {
-                case '1mois':
-                    price = 150;
-                    break;
-                case '3mois':
-                    price = 450;
-                    break;
-                case '6mois':
-                    price = 900;
-                    break;
-                case '12mois':
-                    price = 1800;
-                    break;
-                case 'autre':
-                    price = prompt("Entrez le prix:");
-                    break;
-            }
-            document.getElementById('editPrix').value = price;
-
-            // Calcul de la date de fin d'abonnement pour affichage
-            const subscriptionDate = new Date(document.getElementById('editDate').value);
-            const expirationDate = new Date(subscriptionDate);
-            switch (abonnement) {
-                case '1mois':
-                    expirationDate.setMonth(expirationDate.getMonth() + 1);
-                    break;
-                case '3mois':
-                    expirationDate.setMonth(expirationDate.getMonth() + 3);
-                    break;
-                case '6mois':
-                    expirationDate.setMonth(expirationDate.getMonth() + 6);
-                    break;
-                case '12mois':
-                    expirationDate.setMonth(expirationDate.getMonth() + 12);
-                    break;
-                default:
-                    // Si l'utilisateur a choisi une autre durée, ajustez en conséquence
-                    // Par exemple, pour une durée personnalisée (autre), le calcul pourrait être différent.
-                    break;
-            }
-            document.getElementById('editExpirationDate').value = expirationDate.toISOString().split('T')[0];
-        }
-
-        function cancelEdit() {
-            document.getElementById('editForm').reset();
-            document.getElementById('editFormContainer').style.display = 'none';
-        }
-
-        fetchAndDisplayData();
-
-        function saveData() {
-            const formData = new FormData(document.getElementById('editForm'));
-            fetch('save.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.text())
-            .then(data => {
-                console.log('Réponse du serveur:', data);
-                fetchAndDisplayData();
-                cancelEdit();
-            })
-            .catch(error => console.error('Erreur:', error));
-        }
-
         function deleteRow(id) {
     if (confirm('Voulez-vous vraiment supprimer cet abonnement ?')) {
         fetch('delete.php', {
@@ -432,80 +334,54 @@ function hideEditForm() {
     }
 }
 
+        function cancelEdit() {
+            const formContainer = document.getElementById('editFormContainer');
+            formContainer.style.display = 'none'; // Cacher le formulaire
+        }
 
-        function setupPaymentButtons() {
-            const paymentButtons = document.querySelectorAll('.payment-button');
-            paymentButtons.forEach(button => {
-                const subscriptionDate = button.getAttribute('data-subscription-date');
-                const subscriptionDuration = parseInt(button.getAttribute('data-subscription-duration'));
-                const expirationDate = new Date(subscriptionDate);
-                expirationDate.setMonth(expirationDate.getMonth() + subscriptionDuration);
-
-                const now = new Date();
-                if (now > expirationDate) {
-                    button.classList.add('expired');
-                    button.textContent = 'payé';
-                    button.disabled = true;
-                } else {
-                    button.classList.remove('expired');
-                    button.textContent = 'Payé';
-                    button.disabled = false;
-                }
-
-                button.addEventListener('click', () => {
-                    // Ajouter ici la logique pour marquer comme payé sur le serveur
-                    console.log(`Marquer comme payé pour l'abonnement avec la date ${subscriptionDate}`);
-                });
-            });
+        function saveData() {
+            const saveDataLink = document.getElementById('saveDataLink');
+            saveDataLink.href = 'abonnements.csv'; // Lien vers le fichier CSV des abonnements
+            saveDataLink.download = 'abonnements.csv'; // Nom du fichier à télécharger
         }
 
         function search() {
-            const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
-            const rows = document.querySelectorAll('#abonnementsBody tr');
-            rows.forEach(row => {
-                const cin = row.children[1].textContent.toLowerCase();
-                const nom = row.children[2].textContent.toLowerCase();
-                const Prénom = row.children[3].textContent.toLowerCase();
-                const dateAbonnement = row.children[7].textContent;
-                const dateFinAbonnement= row.children[8].textContent;
-                const typeAbonnement = row.children[5].textContent.toLowerCase();
-              
-                if (cin.includes(searchTerm) || nom.includes(searchTerm)|| Prénom.includes(searchTerm) || dateAbonnement.includes(searchTerm)|| dateFinAbonnement.includes(searchTerm)||  typeAbonnement.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+            const searchInput = document.getElementById('searchInput').value;
+            console.log(searchInput);
+            // Implémenter la logique de recherche ici
+            // Par exemple, filtrer les lignes du tableau
         }
 
-      
-        function saveData() {
-    const tbody = document.getElementById('abonnementsBody');
-    const rows = Array.from(tbody.rows);
-    let csvContent = "CIN,Nom,Prénom,Abonnement,Date d'abonnement\r\n"; // En-tête du CSV
+        function updatePrice() {
+            const abonnement = document.getElementById('editAbonnement').value;
+            const editPrix = document.getElementById('editPrix');
 
-    rows.forEach(row => {
-        const cin = row.cells[0].innerText;
-        const nom = row.cells[1].innerText;
-        const prenom = row.cells[2].innerText;
-        const abonnement = row.cells[4].innerText;
-        const createdAt = row.cells[6].innerText;
+            switch (abonnement) {
+                case '1mois':
+                    editPrix.value = '10';
+                    break;
+                case '3mois':
+                    editPrix.value = '25';
+                    break;
+                case '6mois':
+                    editPrix.value = '45';
+                    break;
+                case '12mois':
+                    editPrix.value = '80';
+                    break;
+                case 'autre':
+                    editPrix.value = '';
+                    break;
+                default:
+                    editPrix.value = '';
+                    break;
+            }
+        }
 
-        csvContent += `${cin},${nom},${prenom},${abonnement},${createdAt}\r\n`;
-    });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const timestamp = new Date().toISOString().replace(/[:]/g, "-"); // Formater la date
-    const filename = `abonnements_${timestamp}.csv`;
-
-    const link = document.createElement("a");
-    link.setAttribute("href", URL.createObjectURL(blob));
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-
-    link.click(); // Simule un clic pour déclencher le téléchargement
-    document.body.removeChild(link); // Supprime le lien après le téléchargement
-}
+        // Fonction d'initialisation à l'ouverture de la page
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAndDisplayData(); // Charger et afficher les données initiales
+        });
 
     </script>
 </body>
