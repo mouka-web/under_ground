@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Underground</title>
+    <title>Formulaire d'abonnement</title>
     <link rel="icon" href="logo.png" type="image/png">
     <style>
         body {
@@ -142,7 +142,7 @@
             <img src="logo1.png" alt="Logo" class="logo">
             <h2>Formulaire d'abonnement</h2>
         </div>
-        <form action="under.php"  method="post" id="abonnementForm">
+        <form action="under.php" method="post" id="abonnementForm" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="cin">Numéro CIN:</label>
                 <input type="text" id="cin" name="cin" required>
@@ -175,15 +175,16 @@
                 <input type="number" id="prix" name="prix" required>
             </div>
             <div class="form-group">
-                <label>Choisissez une option de photo (obligatoire):</label>
+                <label>Choisissez une option pour la photo :</label><br>
                 <label>
-                    <input type="radio" name="photoOption" value="upload" onclick="togglePhotoInput()" required>
+                    <input type="radio" name="photoOption" value="upload" onclick="togglePhotoInput()">
                     Télécharger une photo
-                </label>
+                </label><br>
                 <label>
-                    <input type="radio" name="photoOption" value="camera" onclick="togglePhotoInput()" required>
+                    <input type="radio" name="photoOption" value="camera" onclick="togglePhotoInput()">
                     Prendre une photo
                 </label>
+                <!-- Le champ de téléchargement de photo et le bouton pour prendre une photo -->
                 <input type="file" id="photo" name="photo" accept="image/*" style="display:none;">
                 <button type="button" id="takePhotoButton" onclick="takePhoto()" style="display:none;">Prendre une photo</button>
                 <video id="camera" width="320" height="240" style="display:none;"></video>
@@ -220,32 +221,41 @@
                     break;
             }
         }
-
+    
         function redirectToGestion() {
             window.location.href = 'gestion.html';
         }
-
+    
         function togglePhotoInput() {
             const uploadInput = document.getElementById('photo');
             const cameraButton = document.getElementById('takePhotoButton');
             const video = document.getElementById('camera');
-
-            if (document.querySelector('input[name="photoOption"]:checked').value === 'upload') {
-                uploadInput.style.display = 'block';
+    
+            if (document.querySelector('input[name="photoOption"]:checked')) {
+                const selectedOption = document.querySelector('input[name="photoOption"]:checked').value;
+                if (selectedOption === 'upload') {
+                    uploadInput.style.display = 'block';
+                    cameraButton.style.display = 'none';
+                    video.style.display = 'none';
+                    document.getElementById('canvas').style.display = 'none';
+                } else {
+                    uploadInput.style.display = 'none';
+                    cameraButton.style.display = 'block';
+                    video.style.display = 'block';
+                    startCamera();
+                }
+            } else {
+                // Aucune option sélectionnée, cacher tous les éléments liés à la photo
+                uploadInput.style.display = 'none';
                 cameraButton.style.display = 'none';
                 video.style.display = 'none';
                 document.getElementById('canvas').style.display = 'none';
-            } else {
-                uploadInput.style.display = 'none';
-                cameraButton.style.display = 'block';
-                video.style.display = 'block';
-                startCamera();
             }
         }
-
+    
         function startCamera() {
             const video = document.getElementById('camera');
-
+    
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({ video: true }).then(function(stream) {
                     video.srcObject = stream;
@@ -253,30 +263,43 @@
                 });
             }
         }
-
+    
         function takePhoto() {
             const video = document.getElementById('camera');
             const canvas = document.getElementById('canvas');
             const context = canvas.getContext('2d');
-
+    
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             video.style.display = 'none';
             canvas.style.display = 'block';
             const dataUrl = canvas.toDataURL('image/png');
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'photoBase64';
-            input.value = dataUrl;
-            document.getElementById('abonnementForm').appendChild(input);
+    
+            // Vérifier si une photo a été prise ou téléchargée
+            if (dataUrl.trim() !== '') {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'photoBase64';
+                input.value = dataUrl;
+                document.getElementById('abonnementForm').appendChild(input);
+            }
         }
-
+    
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('abonnementForm').addEventListener('submit', function(event) {
-                event.preventDefault(); // Empêche la soumission par défaut du formulaire
-
+                event.preventDefault(); // Empêcher la soumission par défaut du formulaire
+    
                 const form = this;
                 const formData = new FormData(form);
-
+    
+                // Ajouter une vérification pour les champs de photo
+                if (document.querySelector('input[name="photoOption"]:checked')) {
+                    const selectedOption = document.querySelector('input[name="photoOption"]:checked').value;
+                    if (selectedOption === 'camera' && document.getElementById('canvas').style.display === 'none') {
+                        // Si l'option est de prendre une photo mais aucune photo n'a été prise
+                        formData.delete('photoBase64'); // Supprimer le champ photoBase64 du FormData
+                    }
+                }
+    
                 fetch(form.action, {
                     method: form.method,
                     body: formData
@@ -295,7 +318,7 @@
                     alert.textContent = data; // Afficher le message de PHP
                     alertContainer.appendChild(alert);
                     form.reset(); // Effacer le formulaire après succès
-
+    
                     // Rediriger vers gestion.html après 2 secondes
                     setTimeout(function() {
                         window.location.href = 'gestion.html';
@@ -313,5 +336,6 @@
             });
         });
     </script>
+    
 </body>
 </html>
