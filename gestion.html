@@ -46,9 +46,21 @@
             background-color: red; /* Classe pour le bouton "Payé" expiré */
             color: white;
         }
-      
         .form-container {
             display: none; /* Cacher le formulaire par défaut */
+        }
+        .profile-photo {
+            width: 100px;
+            height: 100px; /* Fixer la hauteur */
+            border-radius: 50%; /* Pour un cercle parfait */
+            margin-top: 10px;
+        }
+        video {
+            width: 320px; /* Ajustez la taille de la vidéo */
+            height: auto;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -64,7 +76,6 @@
         <div class="content">
             <a href="#" id="saveDataLink" onclick="saveData()">Enregistrer</a>
 
-      
             <h2>Liste des abonnements
                 <div class="search-container">
                     <input type="text" id="searchInput" placeholder="Rechercher par CIN ou par nom...">
@@ -74,16 +85,17 @@
             <table>
                 <thead>
                     <tr>
+                        <th>Photo</th>
                         <th>CIN</th>
                         <th>Nom</th>
                         <th>Prénom</th>
                         <th>Téléphone</th>
-                        <th>Abonnement</th>
+                        <th>Type d'abonnement</th>
                         <th>Prix</th>
                         <th>Date d'abonnement</th>
-                        <th>Actions</th>
+                        <th>Date fin d'abonnement</th>
                         <th>Payé</th>
-                        <th>Photo</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="abonnementsBody">
@@ -127,8 +139,14 @@
                 <label for="editPrix">Prix:</label>
                 <input type="number" id="editPrix" name="prix" required readonly>
             </div>
-            <label for="editDate">Date d'abonnement:</label>
-            <input type="date" id="editDate" name="created_at" >
+            <div class="form-group">
+                <label for="editDate">Date d'abonnement:</label>
+                <input type="date" id="editDate" name="created_at">
+            </div>
+            <div class="form-group">
+                <label for="editExpirationDate">Date fin d'abonnement:</label>
+                <input type="date" id="editExpirationDate" name="expiration_date" readonly>
+            </div>
             <div class="form-group">
                 <label for="editPhoto">Photo actuelle:</label>
                 <img id="currentPhoto" class="profile-photo" src="" alt="Photo de l'abonné">
@@ -181,92 +199,80 @@
                     photoInput.files = dataTransfer.files;
                 });
         }
-    </script>
-    
-    <style>
-      .profile-photo {
-    width: 100px;
-    height: 100px; /* Fixer la hauteur */
-    border-radius: 50%; /* Pour un cercle parfait */
-    margin-top: 10px;
-}
-
-        video {
-            width: 320px; /* Ajustez la taille de la vidéo */
-            height: auto;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-    </style>
-    
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            fetchAndDisplayData();
-            updatePrice(); // Appel initial pour le prix
-        });
 
         function fetchAndDisplayData() {
-            fetch('gestion.php')
-            .then(response => response.text())
-            .then(data => {
-                const tbody = document.getElementById('abonnementsBody');
-                tbody.innerHTML = '';
+    fetch('gestion.php')
+    .then(response => response.text())
+    .then(data => {
+        const tbody = document.getElementById('abonnementsBody');
+        tbody.innerHTML = '';
 
-                if (data.trim() !== '') {
-                    const rows = data.trim().split("\n");
-                    rows.forEach(row => {
-                        const columns = row.split(",");
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${columns[0]}</td>
-                            <td>${columns[1]}</td>
-                            <td>${columns[2]}</td>
-                            <td>${columns[3]}</td>
-                            <td>${columns[4]}</td>
-                            <td>${columns[5]}</td>
-                            <td>${columns[6]}</td>
-                            <td>
-                                <button class="edit-button" onclick="editRow(${columns[7]}, '${columns[0]}', '${columns[1]}', '${columns[2]}', '${columns[3]}', '${columns[4]}', '${columns[5]}', '${columns[6]}', '${columns[8]}')">Modifier</button>
-                                <button onclick="deleteRow(${columns[7]})">Supprimer</button>
-                            </td>
-                            <td>
-                                <button class="payment-button" id="paymentButton_${columns[7]}" data-subscription-date="${columns[6]}" data-subscription-duration="${columns[4]}">Payé</button>
-                            </td>
-                            <td>
- <img src="data:image/jpeg;base64,${columns[8]}" alt="Photo de l'abonné" class="profile-photo" onclick="showPhoto('data:image/jpeg;base64,${columns[8]}')">                            </td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                    setupPaymentButtons();
-                } else {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `<td colspan="10">Aucune donnée disponible</td>`;
-                    tbody.appendChild(tr);
-                }
-            })
-            .catch(error => console.error('Erreur:', error));
-        }
+        if (data.trim() !== '') {
+            const rows = data.trim().split("\n");
+            rows.forEach(row => {
+                const columns = row.split(",");
+                const tr = document.createElement('tr');
 
-        function setupPaymentButtons() {
-            const now = new Date().getTime();
-            const paymentButtons = document.querySelectorAll('.payment-button');
-
-            paymentButtons.forEach(button => {
-                const subscriptionDate = new Date(button.dataset.subscriptionDate).getTime();
-                const duration = parseInt(button.dataset.subscriptionDuration);
-                const expirationDate = new Date(subscriptionDate);
+                // Calcul de la date de fin d'abonnement
+                const subscriptionDate = new Date(columns[6]);
+                let expirationDate = new Date(subscriptionDate);
+                const duration = parseInt(columns[4]);
                 expirationDate.setMonth(expirationDate.getMonth() + duration);
-                const differenceInDays = Math.ceil((expirationDate.getTime() - now) / (1000 * 3600 * 24));
 
-                if (differenceInDays <= 0) {
-                    button.classList.add('expired');
-                } else {
-                    button.classList.remove('expired');
-                }
+                // Formater la date d'abonnement et la date de fin d'abonnement
+                const formattedStartDate = formatDate(subscriptionDate);
+                const formattedEndDate = formatDate(expirationDate);
+
+                tr.innerHTML = `
+                    <td><img src="data:image/jpeg;base64,${columns[8]}" alt="" class="profile-photo" onclick="showPhoto('data:image/jpeg;base64,${columns[8]}')"></td>
+                    <td>${columns[0]}</td>
+                    <td>${columns[1]}</td>
+                    <td>${columns[2]}</td>
+                    <td>${columns[3]}</td>
+                    <td>${columns[4]}</td>
+                    <td>${columns[5]}</td>
+                    <td>${formattedStartDate}</td>
+                    <td>${formattedEndDate}</td>
+                    <td>
+                        <button class="payment-button" id="paymentButton_${columns[7]}" data-subscription-date="${columns[6]}" data-subscription-duration="${columns[4]}">Payé</button>
+                    </td>
+                    <td>
+                        <button class="edit-button" onclick="editRow(${columns[7]}, '${columns[0]}', '${columns[1]}', '${columns[2]}', '${columns[3]}', '${columns[4]}', '${columns[5]}', '${columns[6]}', '${columns[8]}')">Modifier</button>
+                        <button onclick="deleteRow(${columns[7]})">Supprimer</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
             });
+            setupPaymentButtons();
+        } else {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td colspan="11">Aucune donnée disponible</td>`;
+            tbody.appendChild(tr);
         }
+    })
+    .catch(error => console.error('Erreur:', error));
+}
+
+function formatDate(date) {
+    const options = { day: 'numeric', month: 'long', year: 'numeric' };
+    return new Intl.DateTimeFormat('fr-FR', options).format(date);
+}
+
+
+        function editRow(id, cin, nom, prenom, telephone, abonnement, prix, date, photo) {
+            document.getElementById('editFormContainer').style.display = 'block';
+            document.getElementById('editId').value = id;
+            document.getElementById('editCin').value = cin;
+            document.getElementById('editNom').value = nom;
+            document.getElementById('editPrenom').value = prenom;
+            document.getElementById('editTelephone').value = telephone;
+            document.getElementById('editAbonnement').value = abonnement;
+            document.getElementById('editPrix').value = prix;
+            document.getElementById('editDate').value = date;
+            document.getElementById('editExpirationDate').value = calculateExpirationDate(date, abonnement);
+            document.getElementById('currentPhoto').src = `data:image/jpeg;base64,${photo}`;
+        }
+
         function showPhoto(photoSrc) {
     const img = document.createElement('img');
     img.src = photoSrc;
@@ -290,86 +296,28 @@
     modal.appendChild(img);
     document.body.appendChild(modal);
 }
-
-
-        document.getElementById('editForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const formData = new FormData(this);
-
-            fetch('update.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.text())
-            .then(data => {
-                alert(data);
-                fetchAndDisplayData();
-                this.reset();
-                document.getElementById('editFormContainer').style.display = 'none';
-            })
-            .catch(error => console.error('Erreur:', error));
-        });
-
-        function editRow(id, cin, nom, prenom, telephone, abonnement, prix, createdAt, photo) {
-            document.getElementById('editId').value = id;
-            document.getElementById('editCin').value = cin;
-            document.getElementById('editNom').value = nom;
-            document.getElementById('editPrenom').value = prenom;
-            document.getElementById('editTelephone').value = telephone;
-            document.getElementById('editAbonnement').value = abonnement;
-            document.getElementById('editPrix').value = prix;
-            
-            document.getElementById('currentPhoto').src = `data:image/jpeg;base64,${photo}`;
-            document.getElementById('editFormContainer').style.display = 'block';
-        }
-        function deleteRow(id) {
-    if (confirm('Voulez-vous vraiment supprimer cet abonnement ?')) {
-        fetch('delete.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ id })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Supprimer la ligne du tableau sans actualiser la page
-                const tbody = document.getElementById('abonnementsBody');
-                const rows = Array.from(tbody.rows);
-                const rowToDelete = rows.find(row => row.cells[7].innerText == id);
-                if (rowToDelete) {
-                    tbody.removeChild(rowToDelete);
-                }
-            } else {
-                alert('Erreur lors de la suppression de l\'abonnement : ' + data.error);
+        function calculateExpirationDate(startDate, duration) {
+            const subscriptionDate = new Date(startDate);
+            let expirationDate = new Date(subscriptionDate);
+            switch (duration) {
+                case '1mois':
+                    expirationDate.setMonth(expirationDate.getMonth() + 1);
+                    break;
+                case '3mois':
+                    expirationDate.setMonth(expirationDate.getMonth() + 3);
+                    break;
+                case '6mois':
+                    expirationDate.setMonth(expirationDate.getMonth() + 6);
+                    break;
+                case '12mois':
+                    expirationDate.setMonth(expirationDate.getMonth() + 12);
+                    break;
+                default:
+                    // Si l'utilisateur a choisi une durée personnalisée (autre), ajustez en conséquence
+                    // Par exemple, pour une durée personnalisée, le calcul pourrait être différent.
+                    break;
             }
-        })
-        .catch(error => console.error('Erreur :', error));
-    }
-}
-
-
-
-
-
-        function cancelEdit() {
-            document.getElementById('editFormContainer').style.display = 'none';
-        }
-
-        function search() {
-            const input = document.getElementById('searchInput').value.toLowerCase();
-            const rows = document.querySelectorAll('#abonnementsBody tr');
-
-            rows.forEach(row => {
-                const cin = row.cells[0].textContent.toLowerCase();
-                const nom = row.cells[1].textContent.toLowerCase();
-                if (cin.includes(input) || nom.includes(input)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+            return expirationDate.toISOString().split('T')[0];
         }
 
         function updatePrice() {
@@ -394,7 +342,111 @@
                     break;
             }
             document.getElementById('editPrix').value = price;
+
+            // Calcul de la date de fin d'abonnement pour affichage
+            const subscriptionDate = new Date(document.getElementById('editDate').value);
+            const expirationDate = new Date(subscriptionDate);
+            switch (abonnement) {
+                case '1mois':
+                    expirationDate.setMonth(expirationDate.getMonth() + 1);
+                    break;
+                case '3mois':
+                    expirationDate.setMonth(expirationDate.getMonth() + 3);
+                    break;
+                case '6mois':
+                    expirationDate.setMonth(expirationDate.getMonth() + 6);
+                    break;
+                case '12mois':
+                    expirationDate.setMonth(expirationDate.getMonth() + 12);
+                    break;
+                default:
+                    // Si l'utilisateur a choisi une autre durée, ajustez en conséquence
+                    // Par exemple, pour une durée personnalisée (autre), le calcul pourrait être différent.
+                    break;
+            }
+            document.getElementById('editExpirationDate').value = expirationDate.toISOString().split('T')[0];
         }
+
+        function cancelEdit() {
+            document.getElementById('editForm').reset();
+            document.getElementById('editFormContainer').style.display = 'none';
+        }
+
+        fetchAndDisplayData();
+
+        function saveData() {
+            const formData = new FormData(document.getElementById('editForm'));
+            fetch('save.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(data => {
+                console.log('Réponse du serveur:', data);
+                fetchAndDisplayData();
+                cancelEdit();
+            })
+            .catch(error => console.error('Erreur:', error));
+        }
+
+        function deleteRow(id) {
+            if (confirm("Voulez-vous vraiment supprimer cet abonnement?")) {
+                fetch(`delete.php?id=${id}`)
+                .then(response => response.text())
+                .then(data => {
+                    console.log('Réponse du serveur:', data);
+                    fetchAndDisplayData();
+                })
+                .catch(error => console.error('Erreur:', error));
+            }
+        }
+
+        function setupPaymentButtons() {
+            const paymentButtons = document.querySelectorAll('.payment-button');
+            paymentButtons.forEach(button => {
+                const subscriptionDate = button.getAttribute('data-subscription-date');
+                const subscriptionDuration = parseInt(button.getAttribute('data-subscription-duration'));
+                const expirationDate = new Date(subscriptionDate);
+                expirationDate.setMonth(expirationDate.getMonth() + subscriptionDuration);
+
+                const now = new Date();
+                if (now > expirationDate) {
+                    button.classList.add('expired');
+                    button.textContent = 'payé';
+                    button.disabled = true;
+                } else {
+                    button.classList.remove('expired');
+                    button.textContent = 'Payé';
+                    button.disabled = false;
+                }
+
+                button.addEventListener('click', () => {
+                    // Ajouter ici la logique pour marquer comme payé sur le serveur
+                    console.log(`Marquer comme payé pour l'abonnement avec la date ${subscriptionDate}`);
+                });
+            });
+        }
+
+        function search() {
+            const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+            const rows = document.querySelectorAll('#abonnementsBody tr');
+            rows.forEach(row => {
+                const cin = row.children[1].textContent.toLowerCase();
+                const nom = row.children[2].textContent.toLowerCase();
+                const Prénom = row.children[3].textContent.toLowerCase();
+                const dateAbonnement = row.children[7].textContent;
+                const dateFinAbonnement= row.children[8].textContent;
+                const typeAbonnement = row.children[5].textContent.toLowerCase();
+              
+                if (cin.includes(searchTerm) || nom.includes(searchTerm)|| Prénom.includes(searchTerm) || dateAbonnement.includes(searchTerm)|| dateFinAbonnement.includes(searchTerm)||  typeAbonnement.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+      
         function saveData() {
     const tbody = document.getElementById('abonnementsBody');
     const rows = Array.from(tbody.rows);
@@ -423,9 +475,6 @@
     document.body.removeChild(link); // Supprime le lien après le téléchargement
 }
 
-
-
     </script>
-    
 </body>
 </html>
