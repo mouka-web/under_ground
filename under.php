@@ -16,18 +16,20 @@ try {
     $abonnement = $_POST['abonnement'];
     $prix = $_POST['prix'];
     
+    // Initialisation de $photoData à NULL
+    $photoData = null;
+
     // Vérification de l'option photo
-    if (isset($_POST['photoBase64'])) {
+    if (isset($_POST['photoBase64']) && !empty($_POST['photoBase64'])) {
+        // Si une photo a été prise depuis la caméra et envoyée via base64
         $photoData = $_POST['photoBase64'];
         // Extraire les données binaires de l'image
         list($type, $photoData) = explode(';', $photoData);
         list(, $photoData) = explode(',', $photoData);
         $photoData = base64_decode($photoData);
     } elseif (isset($_FILES['photo']) && $_FILES['photo']['error'] == UPLOAD_ERR_OK) {
+        // Si une photo a été téléchargée via un fichier
         $photoData = file_get_contents($_FILES['photo']['tmp_name']);
-    } else {
-        echo "Erreur lors du téléchargement de la photo.";
-        exit;
     }
 
     // Vérifier si le CIN existe déjà
@@ -49,7 +51,14 @@ try {
         $stmt->bindParam(':telephone', $telephone);
         $stmt->bindParam(':abonnement', $abonnement);
         $stmt->bindParam(':prix', $prix);
-        $stmt->bindParam(':photo', $photoData, PDO::PARAM_LOB); // Insérer les données binaires
+        
+        // Lier le paramètre photo uniquement si $photoData n'est pas NULL
+        if ($photoData !== null) {
+            $stmt->bindParam(':photo', $photoData, PDO::PARAM_LOB);
+        } else {
+            // Si aucune photo n'est téléchargée ou prise, insérer NULL dans la base de données
+            $stmt->bindValue(':photo', null, PDO::PARAM_NULL);
+        }
 
         if ($stmt->execute()) {
             echo "Nouvel enregistrement créé avec succès.";
