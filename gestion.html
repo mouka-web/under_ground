@@ -139,14 +139,8 @@
                 <label for="editPrix">Prix:</label>
                 <input type="number" id="editPrix" name="prix" required readonly>
             </div>
-            <div class="form-group">
-                <label for="editDate">Date d'abonnement:</label>
-                <input type="date" id="editDate" name="created_at">
-            </div>
-            <div class="form-group">
-                <label for="editExpirationDate">Date fin d'abonnement:</label>
-                <input type="date" id="editExpirationDate" name="expiration_date" readonly>
-            </div>
+            <label for="editDate">Date d'abonnement:</label>
+            <input type="date" id="editDate" name="created_at" >
             <div class="form-group">
                 <label for="editPhoto">Photo actuelle:</label>
                 <img id="currentPhoto" class="profile-photo" src="" alt="Photo de l'abonné">
@@ -236,10 +230,10 @@
                     <td>
                         <button class="payment-button" id="paymentButton_${columns[7]}" data-subscription-date="${columns[6]}" data-subscription-duration="${columns[4]}">Payé</button>
                     </td>
-                    <td>
-                        <button class="edit-button" onclick="editRow(${columns[7]}, '${columns[0]}', '${columns[1]}', '${columns[2]}', '${columns[3]}', '${columns[4]}', '${columns[5]}', '${columns[6]}', '${columns[8]}')">Modifier</button>
-                        <button onclick="deleteRow(${columns[7]})">Supprimer</button>
-                    </td>
+                  <td>
+                                <button class="edit-button" onclick="editRow(${columns[7]}, '${columns[0]}', '${columns[1]}', '${columns[2]}', '${columns[3]}', '${columns[4]}', '${columns[5]}', '${columns[6]}', '${columns[8]}')">Modifier</button>
+                                <button onclick="deleteRow(${columns[7]})">Supprimer</button>
+                            </td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -259,8 +253,26 @@ function formatDate(date) {
 }
 
 
-        function editRow(id, cin, nom, prenom, telephone, abonnement, prix, date, photo) {
-            document.getElementById('editFormContainer').style.display = 'block';
+
+document.getElementById('editForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+
+            fetch('update.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(data => {
+                alert(data);
+                fetchAndDisplayData();
+                this.reset();
+                document.getElementById('editFormContainer').style.display = 'none';
+            })
+            .catch(error => console.error('Erreur:', error));
+        });
+
+        function editRow(id, cin, nom, prenom, telephone, abonnement, prix, createdAt, photo) {
             document.getElementById('editId').value = id;
             document.getElementById('editCin').value = cin;
             document.getElementById('editNom').value = nom;
@@ -268,10 +280,14 @@ function formatDate(date) {
             document.getElementById('editTelephone').value = telephone;
             document.getElementById('editAbonnement').value = abonnement;
             document.getElementById('editPrix').value = prix;
-            document.getElementById('editDate').value = date;
-            document.getElementById('editExpirationDate').value = calculateExpirationDate(date, abonnement);
+            
             document.getElementById('currentPhoto').src = `data:image/jpeg;base64,${photo}`;
+            document.getElementById('editFormContainer').style.display = 'block';
         }
+
+function hideEditForm() {
+    document.getElementById('editFormContainer').style.display = 'none';
+}
 
         function showPhoto(photoSrc) {
     const img = document.createElement('img');
@@ -390,16 +406,32 @@ function formatDate(date) {
         }
 
         function deleteRow(id) {
-            if (confirm("Voulez-vous vraiment supprimer cet abonnement?")) {
-                fetch(`delete.php?id=${id}`)
-                .then(response => response.text())
-                .then(data => {
-                    console.log('Réponse du serveur:', data);
-                    fetchAndDisplayData();
-                })
-                .catch(error => console.error('Erreur:', error));
+    if (confirm('Voulez-vous vraiment supprimer cet abonnement ?')) {
+        fetch('delete.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Supprimer la ligne du tableau sans actualiser la page
+                const tbody = document.getElementById('abonnementsBody');
+                const rows = Array.from(tbody.rows);
+                const rowToDelete = rows.find(row => row.cells[7].innerText == id);
+                if (rowToDelete) {
+                    tbody.removeChild(rowToDelete);
+                }
+            } else {
+                alert('Erreur lors de la suppression de l\'abonnement : ' + data.error);
             }
-        }
+        })
+        .catch(error => console.error('Erreur :', error));
+    }
+}
+
 
         function setupPaymentButtons() {
             const paymentButtons = document.querySelectorAll('.payment-button');
