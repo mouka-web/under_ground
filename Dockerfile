@@ -1,5 +1,7 @@
-# Utiliser l'image officielle de PHP
 FROM php:7.4-apache
+
+# Installer les extensions nécessaires
+RUN docker-php-ext-install mysqli pdo pdo_mysql
 
 # Copier les fichiers de l'application dans le conteneur
 COPY . /var/www/html/
