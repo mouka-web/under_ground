@@ -344,13 +344,24 @@
             saveDataLink.href = 'abonnements.csv'; // Lien vers le fichier CSV des abonnements
             saveDataLink.download = 'abonnements.csv'; // Nom du fichier à télécharger
         }
-
         function search() {
-            const searchInput = document.getElementById('searchInput').value;
-            console.log(searchInput);
-            // Implémenter la logique de recherche ici
-            // Par exemple, filtrer les lignes du tableau
+    const input = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#abonnementsBody tr');
+
+    rows.forEach(row => {
+        const cin = row.cells[0].textContent.toLowerCase();
+        const nom = row.cells[1].textContent.toLowerCase();
+        const dateAbonnement = row.cells[2].textContent.toLowerCase();
+        const dateFinAbonnement = row.cells[3].textContent.toLowerCase();
+        const prix = row.cells[4].textContent.toLowerCase();
+        
+        if (cin.includes(input) || nom.includes(input) || dateAbonnement.includes(input) || dateFinAbonnement.includes(input) || prix.includes(input)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
         }
+    });
+}
 
         function updatePrice() {
             const abonnement = document.getElementById('editAbonnement').value;
